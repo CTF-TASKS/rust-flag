@@ -1,7 +1,5 @@
 use tokio::stream;
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::prelude::*;
-use futures::future;
 use futures::stream::{BoxStream, StreamExt};
 
 macro_rules! const_stream {
@@ -11,18 +9,6 @@ macro_rules! const_stream {
             $(
                 stream = stream.chain(tokio::stream::once($x)).boxed();
             )*
-            stream
-        }
-    };
-}
-
-macro_rules! str_stream {
-    ( $x:expr ) => {
-        {
-            let mut stream: BoxStream<'static, _> = tokio::stream::empty().boxed();
-            for i in $x {
-                stream = stream.chain(tokio::stream::once(i)).boxed();
-            }
             stream
         }
     };
@@ -52,8 +38,10 @@ async fn main() {
 
     let enc = const_stream![0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
     let key = const_stream![0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    let result = const_stream![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-    let result = result.zip(key).map(|(a, b)| a ^ b).boxed();
-    println!("equals {}", stream_equals(result, enc).await);
+    let result = stream::iter(flag.as_bytes())
+        .zip(key)
+        .map(|(a, b)| a ^ b)
+        .boxed();
+    println!("Your flag is {}.", if stream_equals(result, enc).await { "right" } else { "wrong" });
 }
