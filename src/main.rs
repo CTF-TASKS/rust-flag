@@ -1,17 +1,13 @@
-use tokio::stream;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use futures::stream::{BoxStream, StreamExt};
+use futures::stream::{self, BoxStream, StreamExt};
 use rand::{SeedableRng, rngs::StdRng};
 use rand::prelude::*;
-
-const PRINT_ENC: bool = false;
 
 macro_rules! const_stream {
     ( $( $x:expr ),* ) => {
         {
-            let mut stream: BoxStream<'static, _> = tokio::stream::empty().boxed();
+            let mut stream: BoxStream<'static, _> = stream::empty().boxed();
             $(
-                stream = stream.chain(tokio::stream::once($x)).boxed();
+                stream = stream.chain(stream::once(async {$x})).boxed();
             )*
             stream
         }
@@ -38,12 +34,10 @@ fn random_stream(seed: u64) -> impl stream::Stream<Item = u8> {
     stream::iter(rng.sample_iter(rand::distributions::Standard))
 }
 
-#[tokio::main]
-async fn main() {
+async fn check() {
     let mut flag = String::new();
-    let mut stdin = BufReader::new(tokio::io::stdin());
     println!("Please input the flag:");
-    stdin.read_line(&mut flag).await.expect("Did not enter a correct string");
+    std::io::stdin().read_line(&mut flag).expect("Did not enter a correct string");
 
     let enc = const_stream![57, 21, 34, 244, 149, 112, 229, 145, 7, 61, 139, 206, 120, 194, 82, 157, 225, 139, 46, 110];
     let key = random_stream(0xbabe1337);
@@ -56,10 +50,13 @@ async fn main() {
         .zip(stream::iter(flag.as_bytes()))
         .map(|(a, b)| a ^ b)
         .boxed();
-    if PRINT_ENC {
-        let result: Vec<u8> = result.collect().await;
-        println!("Enc: {:?}", result);
-    } else {
-        println!("Your flag is {}.", if stream_equals(result, enc).await { "right" } else { "wrong" });
-    }
+
+    // let result: Vec<u8> = result.collect().await;
+    // println!("Enc: {:?}", result);
+
+    println!("Your flag is {}.", if stream_equals(result, enc).await { "right" } else { "wrong" });
+}
+
+fn main() {
+    futures::executor::block_on(check())
 }
