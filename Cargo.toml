@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 tokio = { version = "0.2", features = [ "full" ]}
 futures = "0.3"
+rand = "0.7.3"
 
 [profile.release]
 debug = true

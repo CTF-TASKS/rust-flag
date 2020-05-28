@@ -1,6 +1,10 @@
 use tokio::stream;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use futures::stream::{BoxStream, StreamExt};
+use rand::{SeedableRng, rngs::StdRng};
+use rand::prelude::*;
+
+const PRINT_ENC: bool = false;
 
 macro_rules! const_stream {
     ( $( $x:expr ),* ) => {
@@ -29,6 +33,11 @@ where
     }
 }
 
+fn random_stream(seed: u64) -> impl stream::Stream<Item = u8> {
+    let rng = StdRng::seed_from_u64(seed);
+    stream::iter(rng.sample_iter(rand::distributions::Standard))
+}
+
 #[tokio::main]
 async fn main() {
     let mut flag = String::new();
@@ -36,12 +45,21 @@ async fn main() {
     println!("Please input the flag:");
     stdin.read_line(&mut flag).await.expect("Did not enter a correct string");
 
-    let enc = const_stream![0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-    let key = const_stream![0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+    let enc = const_stream![57, 21, 34, 244, 149, 112, 229, 145, 7, 61, 139, 206, 120, 194, 82, 157, 225, 139, 46, 110];
+    let key = random_stream(0xbabe1337);
 
-    let result = stream::iter(flag.as_bytes())
-        .zip(key)
+    let result = key
+        .scan(0xcc, |state, x| {
+            *state ^= x;
+            futures::future::ready(Some(x))
+        })
+        .zip(stream::iter(flag.as_bytes()))
         .map(|(a, b)| a ^ b)
         .boxed();
-    println!("Your flag is {}.", if stream_equals(result, enc).await { "right" } else { "wrong" });
+    if PRINT_ENC {
+        let result: Vec<u8> = result.collect().await;
+        println!("Enc: {:?}", result);
+    } else {
+        println!("Your flag is {}.", if stream_equals(result, enc).await { "right" } else { "wrong" });
+    }
 }
