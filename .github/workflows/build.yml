@@ -1,0 +1,37 @@
+on: [push, pull_request]
+
+name: Build
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: strip
+          args: target/release/rust-flag
+  
+      - name: Upload elf file
+        uses: actions/upload-artifact@v1
+        with:
+          name: rust-flag
+          path: target/release/rust-flag
