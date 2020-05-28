@@ -25,11 +25,9 @@ jobs:
           command: build
           args: --release
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: strip
-          args: target/release/rust-flag
-  
+      - name: strip
+        run: strip target/release/rust-flag
+
       - name: Upload elf file
         uses: actions/upload-artifact@v1
         with:
